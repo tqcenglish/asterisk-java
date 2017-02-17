@@ -16,14 +16,6 @@
  */
 package org.asteriskjava.manager.internal;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.asteriskjava.manager.event.DisconnectEvent;
 import org.asteriskjava.manager.event.ManagerEvent;
 import org.asteriskjava.manager.event.ProtocolIdentifierReceivedEvent;
@@ -33,6 +25,10 @@ import org.asteriskjava.util.DateUtil;
 import org.asteriskjava.util.Log;
 import org.asteriskjava.util.LogFactory;
 import org.asteriskjava.util.SocketConnectionFacade;
+
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Default implementation of the ManagerReader interface.
@@ -251,6 +247,44 @@ public class ManagerReaderImpl implements ManagerReader
                     }
                     else if (buffer.containsKey("response"))
                     {
+                        final Map<String, Object> bufferEvents = new HashMap<>();
+                        // 当出现 ﻿Message: Queue status will follow 时将关联的事件一并返回
+                        if("Queue status will follow".equals(buffer.get("message"))){
+                            final Map<String, String> event = new HashMap<>();
+                            // 循环读取, 当事件完成后会出现 ﻿EventList: Complete
+                            while(!this.die && (line = socket.readLine()) != null){
+                                if(line.length() > 0){
+                                    int delimiterIndex = line.indexOf(":");
+                                    int delimiterLength = 1;
+                                    if (delimiterIndex > 0 && line.length() > delimiterIndex + delimiterLength)
+                                    {
+                                        String name = line.substring(0, delimiterIndex).toLowerCase(Locale.ENGLISH).trim();
+                                        String value = line.substring(delimiterIndex + delimiterLength).trim();
+                                        event.put(name, value);
+                                    }
+                                }
+
+                                // 获取一个事件完成，将事件按名称分组
+                                if(line.length() == 0){
+                                    String name = event.get("event");
+                                    if(bufferEvents.containsKey(name)){
+                                        Object currentValue = bufferEvents.get(name);
+                                        ((List<Object>) currentValue).add(new HashMap<>(event));
+                                    }else{
+                                        List<Object> list = new ArrayList<>();
+                                        list.add(new HashMap<>(event));
+                                        bufferEvents.put(name, list);
+                                    }
+                                    event.clear();
+                                }
+                                // 将所有组的事件返回为一个 map {"events":{"event1":[], "event2":[]}}
+                                if("Complete".equals(event.get("eventlist"))){
+                                    buffer.put("events", bufferEvents);
+                                    break;
+                                }
+                            }
+                        }
+
                         ManagerResponse response = buildResponse(buffer);
                         // TODO tracing
                         // logger.debug("attempting to build response");

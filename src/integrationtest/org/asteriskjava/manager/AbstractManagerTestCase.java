@@ -9,9 +9,9 @@ public abstract class AbstractManagerTestCase extends TestCase
         DefaultManagerConnection dmc;
 
         dmc = new DefaultManagerConnection();
-        dmc.setUsername("manager");
-        dmc.setPassword("obelisk");
-        dmc.setHostname("10.12.0.1");
+        dmc.setUsername("callcenterami");
+        dmc.setPassword("callcenterzycoo");
+        dmc.setHostname("192.168.1.65");
         dmc.setPort(5038);
 
         return dmc;
