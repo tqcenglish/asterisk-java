@@ -16,6 +16,10 @@
  */
 package org.asteriskjava.manager.internal;
 
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.asteriskjava.manager.event.DisconnectEvent;
 import org.asteriskjava.manager.event.ManagerEvent;
 import org.asteriskjava.manager.event.ProtocolIdentifierReceivedEvent;
@@ -25,10 +29,6 @@ import org.asteriskjava.util.DateUtil;
 import org.asteriskjava.util.Log;
 import org.asteriskjava.util.LogFactory;
 import org.asteriskjava.util.SocketConnectionFacade;
-
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Default implementation of the ManagerReader interface.
@@ -249,7 +249,8 @@ public class ManagerReaderImpl implements ManagerReader
                     {
                         final Map<String, Object> bufferEvents = new HashMap<>();
                         // 当出现 ﻿Message: Queue status will follow 时将关联的事件一并返回
-                        if("Queue status will follow".equals(buffer.get("message"))){
+                        String str = (String)buffer.get("message");
+                        if(str != null &&  str.contains("will follow")){
                             final Map<String, String> event = new HashMap<>();
                             // 循环读取, 当事件完成后会出现 ﻿EventList: Complete
                             while(!this.die && (line = socket.readLine()) != null){
